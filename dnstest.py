@@ -1,3 +1,29 @@
+
+from scapy.all import *
+import datetime
+
+a = rdpcap('/tmp/DNS.pcap')
+
+def take_sample(packets, protocol, *args):
+    genericlist = []
+    hasAll = True
+    for packet in packets:
+        if protocol in packet:
+            for flags in args:
+                if flags[0] is '!' and not(packet[protocol].flags & int(flags[1:], 16)):
+                    hasAll = True
+                elif flags[0] is not '!' and (packet[protocol].flags & int(flags, 16)):
+                    hasAll = True
+                else:
+                    hasAll = False
+                    break
+            if hasAll is True:
+                genericlist.append(packet)
+                hasAll = False
+    return genericlist
+
+
+
 def dns_scan(packets):
 
 	dnsamplification_log = open("logs.txt", "a")
@@ -71,4 +97,9 @@ def dns_scan(packets):
 	for element in successful_amps:    
 		dnsamplification_log.write("<!> There has been a DNS AMPLIFICATION attack (on DNS port 53) from the time: %s to the time %s, a total of %d DNS response packets were sent with no queries, a total of %d bytes were sent, The responding IPs are:\n" % (element[0].strftime('%Y-%m-%d %H:%M:%S'), element[1].strftime('%Y-%m-%d %H:%M:%S'), element[2], element[4]))
 		for aIP in element[3]:
-            		dnsamplification_log.write("    %s\n" % (aIP))
+            		dnsamplification_log.write("    %s\n" % (aIP))		
+
+
+dns_scan(a)
+
+
