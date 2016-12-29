@@ -5,9 +5,9 @@ a = rdpcap('/tmp/SynFlood')
 
 def take_sample(packets, protocol, *args):
     genericlist = []
-    hasAll = False
+    hasAll = True
     for packet in packets:
-        if protocol in packet:
+    	if protocol in packet:
             for flags in args:
                 if flags[0] is '!' and not(packet[protocol].flags & int(flags[1:], 16)):
                     hasAll = True
@@ -18,7 +18,6 @@ def take_sample(packets, protocol, *args):
                     break
             if hasAll is True:
                 genericlist.append(packet)
-                hasAll = False
     return genericlist
 
 
@@ -26,7 +25,6 @@ def take_sample(packets, protocol, *args):
 
 def scan_syn(packets):
     synflood_log = open("logs.txt", "a")
-    found = False #flag
     synlist = take_sample(packets, 'TCP', "0x02", "!0x10") # 0x02 is a SYN flag, 0x10 is an ACK flag 
     acklist = take_sample(packets, 'TCP', "0x10", "!0x02")
     floodList = [] # [0] - dest port [1] - starting date + time of attack [2] - last attack attempt date + time [3] - counter for the amount of syn flood attempts [4] - IPs of all the attackers
@@ -35,12 +33,7 @@ def scan_syn(packets):
     for synP in synlist:
         for ackP in acklist:
             if ackP[IP].src == synP[IP].src and ackP[TCP].dport == synP[TCP].dport and ackP[IP].id == synP[IP].id + 1:
-                found = True
                 acklist.remove(ackP)
-                break
-        if found == True:
-            found = False
-            continue
         else:        
             for x in xrange(len(floodList)):
 		element = floodList[x]

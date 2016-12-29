@@ -6,7 +6,6 @@ def dns_scan(packets):
 	successful_amps = []
 	rslist = []
 	qrlist = []
-	found = False #flag
 	amp_info = None
 
 	for packet in dnslist:
@@ -20,13 +19,9 @@ def dns_scan(packets):
 	
 	for rsP in rslist:
 		for qrP in qrlist:
-			if rsP[IP].src == qrP[IP].src and rsP[IP].id == qrP[IP].id:
-				found = True
+			if rsP[IP].src == qrP[IP].dst and rsP[DNS].id == qrP[DNS].id:
 				qrlist.remove(qrP)
 				break
-		if found == True:
-			found = False
-			continue
 		else:
 			rsPtime = datetime.datetime.fromtimestamp(int(rsP.time))
 			if amp_info != None:
@@ -39,7 +34,6 @@ def dns_scan(packets):
 					amp_info = temp
 					if rsP[IP].src not in amp_info[3]:
 						amp_info[3].append(rsP[IP].src)
-					break
 
 				if (rsPtime.timetuple()[5] - amp_info[1].tuple()[5] >= 1 or \
 					rsPtime.timetuple()[1] != amp_info[1].tuple()[1] or \
@@ -50,7 +44,6 @@ def dns_scan(packets):
                         		# if more than two minutes have passed since the last attack and there were more than 10 attempts recently, classify as an attack that has happend
                         		successful_amps.append[amp_info]
 					amp_info = None	 
-                        		break
 
 				if (rsPtime.timetuple()[5] - amp_info[1].tuple()[5] >= 1 or \
 				rsPtime.timetuple()[1] != amp_info[1].tuple()[1] or \
@@ -60,7 +53,6 @@ def dns_scan(packets):
 					amp_info[2] < 10:                      
  				# if more than two minutes have passed since the last attack and there were less than 10 attempts recently, delete from the list of possible attacks            
                         		amp_info = None
-                        		break
 			else:
 				amp_info = (rsPtime, rsPtime, 1, [rsP[IP].src], len(rsP))
 
