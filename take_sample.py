@@ -1,6 +1,6 @@
 def take_sample(packets, protocol, *args):
     genericlist = []
-    hasAll = False
+    hasAll = True
     for packet in packets:
         if protocol in packet:
             for flags in args:

@@ -1,3 +1,29 @@
+from scapy.all import *
+import datetime
+
+a = rdpcap('/tmp/SynFlood')
+
+def take_sample(packets, protocol, *args):
+    genericlist = []
+    hasAll = False
+    for packet in packets:
+        if protocol in packet:
+            for flags in args:
+                if flags[0] is '!' and not(packet[protocol].flags & int(flags[1:], 16)):
+                    hasAll = True
+                elif flags[0] is not '!' and (packet[protocol].flags & int(flags, 16)):
+                    hasAll = True
+                else:
+                    hasAll = False
+                    break
+            if hasAll is True:
+                genericlist.append(packet)
+                hasAll = False
+    return genericlist
+
+
+
+
 def scan_syn(packets):
     synflood_log = open("logs.txt", "a")
     found = False #flag
@@ -54,7 +80,7 @@ def scan_syn(packets):
                         	floodList.remove(element)
                         	break
             else:
-                floodList.append((synP[TCP].dport, datetime.datetime.fromtimestamp(int(synP.time)), datetime.datetime.fromtimestamp(int(synP.time)), 1, [synP[IP].src]))
+                floodList.append((synP[TCP].dport, datetime.datetime.fromtimestamp(int(synP.time)), datetime.datetime.fromtimestamp(int(synP.time)), 10, [synP[IP].src]))
 
     for element in floodList:
         if element[3] >= 10:
@@ -64,4 +90,9 @@ def scan_syn(packets):
         synflood_log.write("<!> There has been a SYNFLOOD attack on port: %d from the time: %s to the time %s, a total of %d SYN packets were sent with no ACK answers, The attacking IPs are:\n" % (element[0], element[1].strftime('%Y-%m-%d %H:%M:%S'), element[2].strftime('%Y-%m-%d %H:%M:%S'), element[3]))
         for aIP in element[4]:
             synflood_log.write("    %s\n" % (aIP))
+
+    return successfulFloods
+
+b = scan_syn(a)
+print(b)
 
