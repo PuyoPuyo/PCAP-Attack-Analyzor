@@ -57,7 +57,7 @@ def dns_scan(packets):
 				amp_info = (rsPtime, rsPtime, 1, [rsP[IP].src], len(rsP))
 
 	
-	if amp_info[2] >= 10:
+	if amp_info != None and amp_info[2] >= 10:
 		successful_amps.append[amp_info]
         
 	for element in successful_amps:    
