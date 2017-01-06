@@ -2,7 +2,7 @@ def rogue_DHCP(packets):
 
 	rogueDHCP_log = open("logs.txt", "a")
 	iplist = []
-	dhcplist = take_sample(packets, "DHCP")
+
 	for packet in dhcplist:
 		if packet[DHCP].options[0][1] != 2:
 		# if the packet type is not an offer

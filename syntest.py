@@ -1,8 +1,32 @@
-from scapy.all import *
-import datetime
+class FloodPacket():
+	
+    def __init__(self, destport, starttime, lasttime, counter, IPs):
+        self.destport = destport
+        self.starttime = starttime
+        self.lasttime = lasttime
+        self.counter = counter
+        self.IPs = IPs
+    
+    def compareTime(self, packettime):
+    # returns True if less than two minutes have passed False othrewise
+        if packettime.timetuple()[5] - self.lasttime.timetuple()[5] <= 1 and \
+                    packettime.timetuple()[1] == self.lasttime.timetuple()[1] and \
+                        packettime.timetuple()[2] == self.lasttime.timetuple()[2] and \
+                            packettime.timetuple()[3] == self.lasttime.timetuple()[3] and \
+                                packettime.timetuple()[4] == self.lasttime.timetuple()[4]:
+            return True
 
-a = rdpcap('/tmp/SynFlood')
 
+        if (packettime.timetuple()[5] - self.lasttime.tuple()[5] > 1 or \
+        packettime.timetuple()[1] != self.lasttime.tuple()[1] or \
+        packettime.timetuple()[2] != self.lasttime.tuple()[2] or \
+        packettime.timetuple()[3] != self.lasttime.tuple()[3] or \
+        packettime.timetuple()[4] != self.lasttime.tuple()[4]):
+            return False
+
+	return False
+
+  
 def take_sample(packets, protocol, *args):
     genericlist = []
     hasAll = False
@@ -22,77 +46,58 @@ def take_sample(packets, protocol, *args):
     return genericlist
 
 
+from scapy.all import *
+import datetime
+
+a = rdpcap('/tmp/SynFlood')
 
 
 def scan_syn(packets):
     synflood_log = open("logs.txt", "a")
-    found = False #flag
     synlist = take_sample(packets, 'TCP', "0x02", "!0x10") # 0x02 is a SYN flag, 0x10 is an ACK flag 
     acklist = take_sample(packets, 'TCP', "0x10", "!0x02")
-    floodList = [] # [0] - dest port [1] - starting date + time of attack [2] - last attack attempt date + time [3] - counter for the amount of syn flood attempts [4] - IPs of all the attackers
+    floodList = [] 
     successfulFloods = [] # list of all the successful syn flood attacks that have happened with all the information from a floodList value
 
     for synP in synlist:
         for ackP in acklist:
             if ackP[IP].src == synP[IP].src and ackP[TCP].dport == synP[TCP].dport and ackP[IP].id == synP[IP].id + 1:
-                found = True
                 acklist.remove(ackP)
                 break
-        if found == True:
-            found = False
-            continue
         else:        
-            for x in xrange(len(floodList)):
-		element = floodList[x]
-                if element[0] == synP[TCP].dport:
-			synPtime = datetime.datetime.fromtimestamp(int(synP.time))
-			if synPtime.timetuple()[5] - element[2].timetuple()[5] <= 1 and \
-				synPtime.timetuple()[1] == element[2].timetuple()[1] and \
-					synPtime.timetuple()[2] == element[2].timetuple()[2] and \
-						synPtime.timetuple()[3] == element[2].timetuple()[3] and \
-							synPtime.timetuple()[4] == element[2].timetuple()[4]:
-                       		# if less than two minutes have passed since the last attempted attack
-				element = (element[0], element[1], synPtime, element[3] + 1, element[4])
-				floodList[x] = element
-                        	if synP[IP].src not in element[4]:
-                            		element[4].append(synP[IP].src)
-                        	break
-                            
-			if (synPtime.timetuple()[5] - element[2].tuple()[5] >= 1 or \
-			synPtime.timetuple()[1] != element[2].tuple()[1] or \
-			synPtime.timetuple()[2] != element[2].tuple()[2] or \
-			synPtime.timetuple()[3] != element[2].tuple()[3] or \
-			synPtime.timetuple()[4] != element[2].tuple()[4]) and \
-				element[3] >= 10:  
-                        # if more than two minutes have passed since the last attack and there were more than 10 attempts recently, classify as an attack that has happend
-                        	successfulFloods.append[element]
-				floodList.remove(element)	 
-                        	break
+		for element in floodList:		     
+		        if element.destport == synP[TCP].dport:
+				synPtime = datetime.datetime.fromtimestamp(int(synP.time))
 
-			if (synPtime.timetuple()[5] - element[2].tuple()[5] >= 1 or \
-			synPtime.timetuple()[1] != element[2].tuple()[1] or \
-			synPtime.timetuple()[2] != element[2].tuple()[2] or \
-			synPtime.timetuple()[3] != element[2].tuple()[3] or \
-			synPtime.timetuple()[4] != element[2].tuple()[4]) and \
-				element[3] < 10:                      
-                        # if more than two minutes have passed since the last attack and there were less than 10 attempts recently, delete from the list of possible attacks            
-                        	floodList.remove(element)
-                        	break
-            else:
-                floodList.append((synP[TCP].dport, datetime.datetime.fromtimestamp(int(synP.time)), datetime.datetime.fromtimestamp(int(synP.time)), 1, [synP[IP].src]))
+				if element.compareTime(synPtime) == True:
+					element.counter += 1
+					if synP[IP].src not in element.IPs:
+					    element.IPs.append(synP[IP].src)
+					    break
+		                    
+				elif element.compareTime(synPtime) == False and element.counter >= 10:
+		       			successfulFloods.append[element]
+					floodList.remove(element)	 
+		        		break
+
+				else:                    
+		       			floodList.remove(element)
+					break
+		else:
+                	floodList.append(PInfo(synP[TCP].dport, datetime.datetime.fromtimestamp(int(synP.time)), datetime.datetime.fromtimestamp(int(synP.time)), 1, [synP[IP].src], None))
 
     for element in floodList:
-        if element[3] >= 10:
+        if element.counter >= 10:
             successfulFloods.append(element)
         
     for element in successfulFloods:    
-        synflood_log.write("<!> There has been a SYN FLOOD attack on port: %d from the time: %s to the time: %s, a total of %d SYN packets were sent with no ACK answers, The attacking IPs are:\n" % (element[0], element[1].strftime('%Y-%m-%d %H:%M:%S'), element[2].strftime('%Y-%m-%d %H:%M:%S'), element[3]))
-        for aIP in element[4]:
-            synflood_log.write("	%s\n" % (aIP))
-
-
-    return successfulFloods
+        synflood_log.write("<!> There has been a SYNFLOOD attack on port: %d from the time: %s to the time %s, a total of %d SYN packets were sent with no ACK answers, The attacking IPs are:\n" % (element.destport, element.starttime.strftime('%Y-%m-%d %H:%M:%S'), element.lasttime.strftime('%Y-%m-%d %H:%M:%S'), element.counter))
+        for aIP in element.IPs:
+            synflood_log.write("    %s\n" % (aIP))
 
 b = scan_syn(a)
 print(b)
+#def main():
+#   new_packets = [[packet for packet in packets if packet.protocol="TCP"], [packet for packet in packets if packet.protocol="UDP"], [packet for packet in packets if packet.protocol=""],  ]
 
+#   scan_syn(new_packets)
