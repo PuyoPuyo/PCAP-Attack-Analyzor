@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Drag & Drop to upload PCAP file</title>
+		<link rel="stylesheet" href="global.css">
+		<script>
+			function $(element){
+				return document.getElementById(element);
+			}
+
+			function uploadFile(pickmethod){
+				if (pickmethod == "filebutton"){
+					var file = $("pcapfile").files[0];
+				}
+				else{
+					var file = pickmethod[0];
+				}
+				var formdata = new FormData();
+				formdata.append("pcapfile", file);
+				var ajax = new XMLHttpRequest();
+				ajax.onload = function(){
+					var data = this.responseText;
+					$("status").innerHTML = data;
+					$("progressBar").value = 100;
+				}
+				ajax.upload.addEventListener("progress", progressHandler, false);
+				//ajax.addEventListener("load", completeHandler, false);
+				ajax.addEventListener("error", errorHandler, false);
+				ajax.addEventListener("abort", abortHandler, false);
+				ajax.open("post", "a.php");
+				ajax.send(formdata);
+			}
+
+			function progressHandler(event){
+				$("loaded_&_total").innerHTML = "Uploaded " + event.loaded + " bytes of " + event.total;
+				var percent = (event.loaded / event.total) * 100;
+				$("progressBar").value = Math.round(percent);
+				$("status").innerHTML = Math.round(percent) + "% uploaded... please wait";
+			}
+
+			//function completeHandler(event){
+			//	console.log(event.status);
+			//	$("status").innerHTML = event.target.reponseText;
+			//	$("progressBar").value = 100;
+			//	alert(event.data);		
+			//}
+
+			function errorHandler(event){
+				$("status").innerHTML = "Upload Failed";
+			}
+
+			function abortHandler(event){
+				$("status").innerHTML = "Upload Aborted";
+			}
+
+
+
+		</script>
+	</head>
+	<body>
+		<div class="dropzone" id="dropzone">Drag and drop PCAP file to upload</div>
+		<script>
+			(function() {
+				var dropzone = $('dropzone');
+
+				dropzone.ondrop = function(event) {
+					event.preventDefault();
+					this.className = "dropzone";
+					uploadFile(event.dataTransfer.files);
+				}
+				dropzone.ondragover = function() {
+					this.className = "dropzone dragover";
+					return false;
+				}
+
+				dropzone.ondragleave = function() {
+					this.className = "dropzone";
+					return false;
+				}
+			}());
+		</script>
+		<form id="uploadform" enctype="multipart/form-data" method="post">
+			<input type="file" name="pcapfile" id="pcapfile"><br>
+			<input type="button" value="Upload File" onclick="uploadFile('filebutton')"><br>
+			<progress id="progressBar" value="0" max="100"></progress>
+		</form>
+		<h3 id="status"></h3>
+		<p id="loaded_&_total"></p>
+
+	</body>
+</html>
